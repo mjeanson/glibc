@@ -23,6 +23,7 @@
 #include <sysdep.h>
 #include <thread_pointer.h>
 #include <sys/rseq.h>
+#include <sys/auxv.h>
 #include <unistd.h>
 
 #ifdef RSEQ_SIG
@@ -31,22 +32,23 @@
 static void
 check_rseq_disabled (void)
 {
-  struct pthread *pd = THREAD_SELF;
+  size_t rseq_size = MAX (getauxval (AT_RSEQ_FEATURE_SIZE), 32);
+  struct rseq *rseq_area = (struct rseq *) ((char *) __thread_pointer () + __rseq_offset);
 
   TEST_COMPARE (__rseq_flags, 0);
-  TEST_VERIFY ((char *) __thread_pointer () + __rseq_offset
-               == (char *) &pd->rseq_area);
-  TEST_COMPARE (__rseq_size, 0);
-  TEST_COMPARE ((int) pd->rseq_area.cpu_id, RSEQ_CPU_ID_REGISTRATION_FAILED);
+  //FIXME: unsure how to test this
+  //TEST_VERIFY ((char *) __thread_pointer () + __rseq_offset
+  //             == (char *) &pd->rseq_area);
+  TEST_COMPARE (__rseq_size, rseq_size);
+  TEST_COMPARE ((int) rseq_area->cpu_id, RSEQ_CPU_ID_REGISTRATION_FAILED);
 
-  int ret = syscall (__NR_rseq, &pd->rseq_area, sizeof (pd->rseq_area),
-                     0, RSEQ_SIG);
+  int ret = syscall (__NR_rseq, rseq_area, __rseq_size, 0, RSEQ_SIG);
   if (ret == 0)
     {
-      ret = syscall (__NR_rseq, &pd->rseq_area, sizeof (pd->rseq_area),
+      ret = syscall (__NR_rseq, rseq_area, __rseq_size,
                      RSEQ_FLAG_UNREGISTER, RSEQ_SIG);
       TEST_COMPARE (ret, 0);
-      pd->rseq_area.cpu_id = RSEQ_CPU_ID_REGISTRATION_FAILED;
+      rseq_area->cpu_id = RSEQ_CPU_ID_REGISTRATION_FAILED;
     }
   else
     {

@@ -30,3 +30,8 @@
   descr->member = (value)
 #define THREAD_SETMEM_NC(descr, member, idx, value) \
   descr->member[idx] = (value)
+
+#define RSEQ_GETMEM_VOLATILE(descr, member) \
+  THREAD_GETMEM_VOLATILE(descr, member)
+#define RSEQ_SETMEM(descr, member, value) \
+  THREAD_SETMEM(descr, member, value)

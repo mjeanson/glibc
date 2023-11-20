@@ -103,13 +103,16 @@ __tls_init_tp (void)
   {
     bool do_rseq = true;
     do_rseq = TUNABLE_GET (rseq, int, NULL);
-    if (rseq_register_current_thread (pd, do_rseq))
-      {
-        /* We need a writable view of the variables.  They are in
-           .data.relro and are not yet write-protected.  */
-        extern unsigned int size __asm__ ("__rseq_size");
-        size = sizeof (pd->rseq_area);
-      }
+    rseq_register_current_thread (pd, do_rseq);
+
+    // FIXME: Even if the registration fails, we need to communicate the size
+    // of the allocated rseq area to an application that could attempt the
+    // registration itself.
+
+    /* We need a writable view of the variables.  They are in
+       .data.relro and are not yet write-protected.  */
+    extern unsigned int size __asm__ ("__rseq_size");
+    size = GLRO (dl_tls_rseq_size);
 
 #ifdef RSEQ_SIG
     /* This should be a compile-time constant, but the current
@@ -118,7 +121,7 @@ __tls_init_tp (void)
        if the rseq registration may have happened because RSEQ_SIG is
        defined.  */
     extern ptrdiff_t offset __asm__ ("__rseq_offset");
-    offset = (char *) &pd->rseq_area - (char *) __thread_pointer ();
+    offset = GLRO (dl_tls_rseq_offset);
 #endif
   }
 
