@@ -610,6 +610,18 @@ struct rtld_global_ro
      See comments in elf/dl-tls.c where it is initialized.  */
   EXTERN size_t _dl_tls_static_surplus;
 
+  /* Size of the features present in the rseq area.  */
+  EXTERN size_t _dl_tls_rseq_feature_size;
+
+  /* Alignment requirement of the rseq area.  */
+  EXTERN size_t _dl_tls_rseq_align;
+
+  /* Size of the rseq area in the static TLS block.  */
+  EXTERN size_t _dl_tls_rseq_size;
+
+  /* Offset of the rseq area from the thread pointer.  */
+  EXTERN ptrdiff_t _dl_tls_rseq_offset;
+
   /* Name of the shared object to be profiled (if any).  */
   EXTERN const char *_dl_profile;
   /* Filename of the output file.  */

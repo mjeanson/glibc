@@ -31,18 +31,28 @@
 # include <syscall.h>
 # include <thread_pointer.h>
 # include <tls.h>
+# include <sys/auxv.h>
 # include "tst-rseq.h"
 
 static void
 do_rseq_main_test (void)
 {
-  struct pthread *pd = THREAD_SELF;
+  size_t rseq_size = MAX (getauxval (AT_RSEQ_FEATURE_SIZE), 32);
 
   TEST_VERIFY_EXIT (rseq_thread_registered ());
   TEST_COMPARE (__rseq_flags, 0);
-  TEST_VERIFY ((char *) __thread_pointer () + __rseq_offset
-               == (char *) &pd->rseq_area);
-  TEST_COMPARE (__rseq_size, sizeof (pd->rseq_area));
+  TEST_COMPARE (__rseq_size, rseq_size);
+  /* rseq area minimum ABI size is 32 bytes. */
+  TEST_VERIFY (__rseq_size >= 32);
+#if TLS_TCB_AT_TP
+  /* rseq area block should come before the thread pointer and be at least 32 bytes. */
+  TEST_VERIFY (__rseq_offset <= 32);
+#elif TLS_DTV_AT_TP
+  /* rseq area block should come after the thread pointer. */
+  TEST_VERIFY (__rseq_offset >= 0);
+#else
+# error "Either TLS_TCB_AT_TP or TLS_DTV_AT_TP must be defined"
+#endif
 }
 
 static void
