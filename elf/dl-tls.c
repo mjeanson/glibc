@@ -27,6 +27,7 @@
 
 #include <tls.h>
 #include <dl-tls.h>
+#include <dl-rseq.h>
 #include <ldsodefs.h>
 
 #if PTHREAD_IN_LIBC
@@ -298,6 +299,37 @@ _dl_determine_tlsoffset (void)
       slotinfo[cnt].map->l_tls_offset = off;
     }
 
+  /* Insert the rseq area block after the last TLS block.  */
+
+  /* Get the rseq auxiliary vectors, 0 is returned when not implemented
+     and we then default to the rseq ABI minimums. When rseq is disabled just
+     use the minimums.  */
+  size_t rseq_size = TLS_DL_RSEQ_MIN_SIZE;
+  size_t rseq_align = TLS_DL_RSEQ_MIN_ALIGN;
+  bool do_rseq = true;
+  do_rseq = TUNABLE_GET_FULL (glibc, pthread, rseq, int, NULL);
+  if (do_rseq)
+    {
+      rseq_size = MAX (GLRO(dl_tls_rseq_feature_size), TLS_DL_RSEQ_MIN_SIZE);
+      rseq_align = MAX (GLRO(dl_tls_rseq_align), TLS_DL_RSEQ_MIN_ALIGN);
+    }
+
+  /* Make sure the rseq area size is a multiple of the requested
+     aligment. */
+  rseq_size = roundup (rseq_size, rseq_align);
+
+  /* Add the rseq area block to the global offset.  */
+  offset = roundup (offset, rseq_align) + rseq_size;
+
+  /* Increase the max_align if necessary.  */
+  max_align = MAX (max_align, rseq_align);
+
+ /* Record the rseq_area block size and offset. The offset is negative
+    with TLS_TCB_AT_TP because the TLS blocks are located before the
+    thread pointer.  */
+  GLRO (dl_tls_rseq_offset) = -offset;
+  GLRO (dl_tls_rseq_size) = rseq_size;
+
   GL(dl_tls_static_used) = offset;
   GLRO (dl_tls_static_size) = (roundup (offset + GLRO(dl_tls_static_surplus),
 					max_align)
@@ -342,6 +374,40 @@ _dl_determine_tlsoffset (void)
 
       offset = off + slotinfo[cnt].map->l_tls_blocksize - firstbyte;
     }
+
+  /* Insert the rseq area block after the last TLS block.  */
+
+  /* Get the rseq auxiliary vectors, 0 is returned when not implemented
+     and we then default to the rseq ABI minimums. When rseq is disabled just
+     use the minimums.  */
+  size_t rseq_size = TLS_DL_RSEQ_MIN_SIZE;
+  size_t rseq_align = TLS_DL_RSEQ_MIN_ALIGN;
+  bool do_rseq = true;
+  do_rseq = TUNABLE_GET_FULL (glibc, pthread, rseq, int, NULL);
+  if (do_rseq)
+    {
+      rseq_size = MAX (GLRO(dl_tls_rseq_feature_size), TLS_DL_RSEQ_MIN_SIZE);
+      rseq_align = MAX (GLRO(dl_tls_rseq_align), TLS_DL_RSEQ_MIN_ALIGN);
+    }
+
+  /* Make sure the rseq area size is a multiple of the requested
+     aligment. */
+  rseq_size = roundup (rseq_size, rseq_align);
+
+  /* Align the global offset to the beginning of the rseq area.  */
+  offset = roundup (offset, rseq_align);
+
+  /* Record the rseq_area block size and offset. The offset is positive
+     with TLS_DTV_AT_TP because the TLS blocks are located after the
+     thread pointer.  */
+  GLRO (dl_tls_rseq_size) = rseq_size;
+  GLRO (dl_tls_rseq_offset) = offset;
+
+  /* Add the rseq area block to the global offset.  */
+  offset += rseq_size;
+
+  /* Increase the max_align if necessary.  */
+  max_align = MAX (max_align, rseq_align);
 
   GL(dl_tls_static_used) = offset;
   GLRO (dl_tls_static_size) = roundup (offset + GLRO(dl_tls_static_surplus),

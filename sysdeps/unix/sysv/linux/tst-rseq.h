@@ -23,11 +23,17 @@
 #include <syscall.h>
 #include <sys/rseq.h>
 #include <tls.h>
+#include <rseq-internal.h>
+
+#define RSEQ_TEST_MIN_SIZE 32
+#define RSEQ_TEST_MIN_ALIGN 32
 
 static inline bool
 rseq_thread_registered (void)
 {
-  return THREAD_GETMEM_VOLATILE (THREAD_SELF, rseq_area.cpu_id) >= 0;
+  struct rseq_area *rseq = (struct rseq_area *) ((char *) __thread_pointer () + __rseq_offset);
+
+  return __atomic_load_n (&rseq->cpu_id, __ATOMIC_RELAXED) >= 0;
 }
 
 static inline int

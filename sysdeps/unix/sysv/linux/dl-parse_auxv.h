@@ -57,5 +57,8 @@ void _dl_parse_auxv (ElfW(auxv_t) *av, dl_parse_auxv_t auxv_values)
     GLRO(dl_sysinfo) = auxv_values[AT_SYSINFO];
 #endif
 
+  GLRO(dl_tls_rseq_feature_size) = auxv_values[AT_RSEQ_FEATURE_SIZE];
+  GLRO(dl_tls_rseq_align) = auxv_values[AT_RSEQ_ALIGN];
+
   DL_PLATFORM_AUXV
 }
