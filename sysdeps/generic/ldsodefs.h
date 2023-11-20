@@ -792,7 +792,8 @@ ssize_t _dl_write (int fd, const void *buffer, size_t length)
 /* Write a message on the specified descriptor standard output.  The
    parameters are interpreted as for a `printf' call.  */
 void _dl_printf (const char *fmt, ...)
-  attribute_hidden __attribute__ ((__format__ (__printf__, 1, 2)));
+  __attribute__ ((__format__ (__printf__, 1, 2)));
+rtld_hidden_proto (_dl_printf)
 
 /* Write a message on the specified descriptor standard error.  The
    parameters are interpreted as for a `printf' call.  */

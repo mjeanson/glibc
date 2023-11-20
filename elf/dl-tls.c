@@ -29,6 +29,8 @@
 #include <dl-tls.h>
 #include <ldsodefs.h>
 
+#include <inttypes.h>
+
 #if PTHREAD_IN_LIBC
 # include <list.h>
 #endif
@@ -230,6 +232,8 @@ _dl_determine_tlsoffset (void)
      dl_tls_dtv_slotinfo_list list.  */
   assert (GL(dl_tls_dtv_slotinfo_list)->next == NULL);
 
+  _dl_printf("_dl_determine_tlsoffset: tcb_alignment: %zd\n", max_align);
+
   struct dtv_slotinfo *slotinfo = GL(dl_tls_dtv_slotinfo_list)->slotinfo;
 
   /* Determining the offset of the various parts of the static TLS
@@ -268,8 +272,15 @@ _dl_determine_tlsoffset (void)
     {
       assert (cnt < GL(dl_tls_dtv_slotinfo_list)->len);
 
+      _dl_printf ("_dl_determine_tlsoffset(): [%zd] l_tls_align: %zd\n", cnt, slotinfo[cnt].map->l_tls_align);
+      _dl_printf ("_dl_determine_tlsoffset(): [%zd] l_tls_firstbyte_offset: %zd\n", cnt, slotinfo[cnt].map->l_tls_firstbyte_offset);
+      _dl_printf ("_dl_determine_tlsoffset(): [%zd] l_tls_blocksize: %zd\n", cnt, slotinfo[cnt].map->l_tls_blocksize);
+
       size_t firstbyte = (-slotinfo[cnt].map->l_tls_firstbyte_offset
 			  & (slotinfo[cnt].map->l_tls_align - 1));
+
+      _dl_printf ("_dl_determine_tlsoffset(): [%zd] firstbyte: %zd\n", cnt, firstbyte);
+
       size_t off;
       max_align = MAX (max_align, slotinfo[cnt].map->l_tls_align);
 
@@ -291,6 +302,8 @@ _dl_determine_tlsoffset (void)
 
       off = roundup (offset + slotinfo[cnt].map->l_tls_blocksize - firstbyte,
 		     slotinfo[cnt].map->l_tls_align) + firstbyte;
+      _dl_printf ("_dl_determine_tlsoffset(): [%zd] off: %zd\n", cnt, off);
+
       if (off > offset + slotinfo[cnt].map->l_tls_blocksize
 		+ (freebottom - freetop))
 	{
@@ -302,9 +315,13 @@ _dl_determine_tlsoffset (void)
       /* XXX For some architectures we perhaps should store the
 	 negative offset.  */
       slotinfo[cnt].map->l_tls_offset = off;
+      _dl_printf ("_dl_determine_tlsoffset(): [%zd] l_tls_offset: %zd\n", cnt, slotinfo[cnt].map->l_tls_offset);
     }
 
   /* Insert the rseq area block after the last TLS block.  */
+
+  _dl_printf ("_dl_determine_tlsoffset(): dl_tls_rseq_feature_size: %zd\n", GLRO (dl_tls_rseq_feature_size));
+  _dl_printf ("_dl_determine_tlsoffset(): dl_tls_rseq_align: %zd\n", GLRO (dl_tls_rseq_align));
 
   /* Get the rseq auxiliary vectors, 0 is returned when not implemented
      and we then default to the rseq ABI minimums.  */
@@ -339,8 +356,15 @@ _dl_determine_tlsoffset (void)
     {
       assert (cnt < GL(dl_tls_dtv_slotinfo_list)->len);
 
+      _dl_printf ("_dl_determine_tlsoffset(): [%zd] l_tls_align: %zd\n", cnt, slotinfo[cnt].map->l_tls_align);
+      _dl_printf ("_dl_determine_tlsoffset(): [%zd] l_tls_firstbyte_offset: %zd\n", cnt, slotinfo[cnt].map->l_tls_firstbyte_offset);
+      _dl_printf ("_dl_determine_tlsoffset(): [%zd] l_tls_blocksize: %zd\n", cnt, slotinfo[cnt].map->l_tls_blocksize);
+
       size_t firstbyte = (-slotinfo[cnt].map->l_tls_firstbyte_offset
 			  & (slotinfo[cnt].map->l_tls_align - 1));
+
+      _dl_printf ("_dl_determine_tlsoffset(): [%zd] firstbyte: %zd\n", cnt, firstbyte);
+
       size_t off;
       max_align = MAX (max_align, slotinfo[cnt].map->l_tls_align);
 
@@ -362,7 +386,10 @@ _dl_determine_tlsoffset (void)
       if (off - offset < firstbyte)
 	off += slotinfo[cnt].map->l_tls_align;
 
+      _dl_printf ("_dl_determine_tlsoffset(): [%zd] off: %zd\n", cnt, off);
+
       slotinfo[cnt].map->l_tls_offset = off - firstbyte;
+      _dl_printf ("_dl_determine_tlsoffset(): [%zd] l_tls_offset: %zd\n", cnt, slotinfo[cnt].map->l_tls_offset);
       if (off - firstbyte - offset > freetop - freebottom)
 	{
 	  freebottom = offset;
@@ -373,6 +400,9 @@ _dl_determine_tlsoffset (void)
     }
 
   /* Insert the rseq area block after the last TLS block.  */
+
+  _dl_printf ("_dl_determine_tlsoffset(): dl_tls_rseq_feature_size: %zd\n", GLRO (dl_tls_rseq_feature_size));
+  _dl_printf ("_dl_determine_tlsoffset(): dl_tls_rseq_align: %zd\n", GLRO (dl_tls_rseq_align));
 
   /* Get the rseq auxiliary vectors, 0 is returned when not implemented
      and we then default to the rseq ABI minimums.  */
@@ -407,6 +437,12 @@ _dl_determine_tlsoffset (void)
 
   /* The alignment requirement for the static TLS block.  */
   GLRO (dl_tls_static_align) = max_align;
+
+  _dl_printf ("_dl_determine_tlsoffset(): dl_tls_static_used: %zd\n", GL (dl_tls_static_used));
+  _dl_printf ("_dl_determine_tlsoffset(): dl_tls_static_size: %zd\n", GLRO (dl_tls_static_size));
+  _dl_printf ("_dl_determine_tlsoffset(): dl_tls_static_align: %zd\n", GLRO (dl_tls_static_align));
+  _dl_printf ("_dl_determine_tlsoffset(): dl_tls_rseq_size: %zd\n", GLRO (dl_tls_rseq_size));
+  _dl_printf ("_dl_determine_tlsoffset(): dl_tls_rseq_offset: %zd\n", GLRO (dl_tls_rseq_offset));
 }
 #endif /* SHARED */
 
@@ -517,6 +553,11 @@ _dl_allocate_tls_storage (void)
   /* Record the value of the original pointer for later
      deallocation.  */
   *tcb_to_pointer_to_free_location (result) = allocated;
+
+  _dl_printf ("_dl_allocate_tls_storage(): size: %zd\n", size);
+  _dl_printf ("_dl_allocate_tls_storage(): alignment: %zd\n", alignment);
+  _dl_printf ("_dl_allocate_tls_storage(): *allocated: 0x%"PRIxPTR"\n", (uintptr_t) allocated);
+  _dl_printf ("_dl_allocate_tls_storage(): *result: 0x%"PRIxPTR"\n", (uintptr_t) result);
 
   result = allocate_dtv (result);
   if (result == NULL)
@@ -655,6 +696,7 @@ _dl_allocate_tls_init (void *result, bool init_tls)
 	     behaviour.   */
 	  if (map->l_ns != LM_ID_BASE && !init_tls)
 	    continue;
+	  _dl_printf ("_dl_allocate_tls_init: [%zd]: Copy tls %zd/%zd bytes at 0x%"PRIxPTR"\n", cnt, map->l_tls_initimage_size, map->l_tls_blocksize, (uintptr_t) dest);
 	  memset (__mempcpy (dest, map->l_tls_initimage,
 			     map->l_tls_initimage_size), '\0',
 		  map->l_tls_blocksize - map->l_tls_initimage_size);

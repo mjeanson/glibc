@@ -289,6 +289,7 @@ _dl_printf (const char *fmt, ...)
   _dl_debug_vdprintf (STDOUT_FILENO, 0, fmt, arg);
   va_end (arg);
 }
+rtld_hidden_def (_dl_printf)
 
 void
 _dl_error_printf (const char *fmt, ...)
