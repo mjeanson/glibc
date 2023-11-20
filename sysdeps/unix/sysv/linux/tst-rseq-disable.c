@@ -26,27 +26,28 @@
 #include <unistd.h>
 
 #ifdef RSEQ_SIG
+# include <sys/auxv.h>
+# include "tst-rseq.h"
+
+static __thread struct rseq local_rseq;
 
 /* Check that rseq can be registered and has not been taken by glibc.  */
 static void
 check_rseq_disabled (void)
 {
-  struct pthread *pd = THREAD_SELF;
+  struct rseq *rseq_area = (struct rseq *) ((char *) __thread_pointer () + __rseq_offset);
 
   TEST_COMPARE (__rseq_flags, 0);
-  TEST_VERIFY ((char *) __thread_pointer () + __rseq_offset
-               == (char *) &pd->rseq_area);
   TEST_COMPARE (__rseq_size, 0);
-  TEST_COMPARE ((int) pd->rseq_area.cpu_id, RSEQ_CPU_ID_REGISTRATION_FAILED);
+  TEST_COMPARE ((int) rseq_area->cpu_id, RSEQ_CPU_ID_REGISTRATION_FAILED);
 
-  int ret = syscall (__NR_rseq, &pd->rseq_area, sizeof (pd->rseq_area),
-                     0, RSEQ_SIG);
+  int ret = syscall (__NR_rseq, &local_rseq, RSEQ_TEST_MIN_SIZE, 0, RSEQ_SIG);
   if (ret == 0)
     {
-      ret = syscall (__NR_rseq, &pd->rseq_area, sizeof (pd->rseq_area),
+      ret = syscall (__NR_rseq, &local_rseq, RSEQ_TEST_MIN_SIZE,
                      RSEQ_FLAG_UNREGISTER, RSEQ_SIG);
       TEST_COMPARE (ret, 0);
-      pd->rseq_area.cpu_id = RSEQ_CPU_ID_REGISTRATION_FAILED;
+      rseq_area->cpu_id = RSEQ_CPU_ID_REGISTRATION_FAILED;
     }
   else
     {

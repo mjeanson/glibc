@@ -1,4 +1,5 @@
-/* Copyright (C) 2007-2024 Free Software Foundation, Inc.
+/* RSEQ defines for the dynamic linker. Generic version.
+   Copyright (C) 2024 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
@@ -15,28 +16,11 @@
    License along with the GNU C Library; if not, see
    <https://www.gnu.org/licenses/>.  */
 
-#include <errno.h>
-#include <sched.h>
-#include <sysdep.h>
-#include <sysdep-vdso.h>
-#include <rseq-internal.h>
+/* Minimum size of the rseq area.  */
+#define TLS_DL_RSEQ_MIN_SIZE 32
 
-static int
-vsyscall_sched_getcpu (void)
-{
-  unsigned int cpu;
-  int r = -1;
-#ifdef HAVE_GETCPU_VSYSCALL
-  r = INLINE_VSYSCALL (getcpu, 3, &cpu, NULL, NULL);
-#else
-  r = INLINE_SYSCALL_CALL (getcpu, &cpu, NULL, NULL);
-#endif
-  return r == -1 ? r : cpu;
-}
+/* Minimum feature size of the rseq area.  */
+#define TLS_DL_RSEQ_MIN_FEATURE_SIZE 20
 
-int
-sched_getcpu (void)
-{
-  int cpu_id = RSEQ_GETMEM_VOLATILE (rseq_get_area(), cpu_id);
-  return __glibc_likely (cpu_id >= 0) ? cpu_id : vsyscall_sched_getcpu ();
-}
+/* Minimum size of the rseq area alignment.  */
+#define TLS_DL_RSEQ_MIN_ALIGN 32

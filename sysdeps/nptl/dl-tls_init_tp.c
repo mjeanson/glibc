@@ -107,8 +107,14 @@ __tls_init_tp (void)
     do_rseq = TUNABLE_GET (rseq, int, NULL);
     if (rseq_register_current_thread (pd, do_rseq))
       {
-        _rseq_size = sizeof (pd->rseq_area);
+        _rseq_size = GLRO (dl_tls_rseq_alloc_size);
       }
+
+    /* If the registration fails or is disabled by tunable, the public rseq
+       size will be '0' regardless of the size of the allocated rseq area.  An
+       rseq area of at least 32 bytes is always allocated since application
+       code is allowed to test the status of the rseq registration with
+       'rseq->cpu_id >= 0'.  */
 
 #ifdef RSEQ_SIG
     /* This should be a compile-time constant, but the current
@@ -116,7 +122,7 @@ __tls_init_tp (void)
        all targets support __thread_pointer, so set __rseq_offset only
        if the rseq registration may have happened because RSEQ_SIG is
        defined.  */
-    _rseq_offset = (char *) &pd->rseq_area - (char *) __thread_pointer ();
+    _rseq_offset = GLRO (dl_tls_rseq_offset);
 #endif
   }
 

@@ -78,6 +78,18 @@ __rtld_static_init (struct link_map *map)
   extern __typeof (dl->_dl_tls_static_size) _dl_tls_static_size
     attribute_hidden;
   dl->_dl_tls_static_size = _dl_tls_static_size;
+  extern __typeof (dl->_dl_tls_rseq_feature_size) _dl_tls_rseq_feature_size
+    attribute_hidden;
+  dl->_dl_tls_rseq_feature_size = _dl_tls_rseq_feature_size;
+  extern __typeof (dl->_dl_tls_rseq_align) _dl_tls_rseq_align
+    attribute_hidden;
+  dl->_dl_tls_rseq_align = _dl_tls_rseq_align;
+  extern __typeof (dl->_dl_tls_rseq_alloc_size) _dl_tls_rseq_alloc_size
+    attribute_hidden;
+  dl->_dl_tls_rseq_alloc_size = _dl_tls_rseq_alloc_size;
+  extern __typeof (dl->_dl_tls_rseq_offset) _dl_tls_rseq_offset
+    attribute_hidden;
+  dl->_dl_tls_rseq_offset = _dl_tls_rseq_offset;
   dl->_dl_find_object = _dl_find_object;
 
   __rtld_static_init_arch (map, dl);

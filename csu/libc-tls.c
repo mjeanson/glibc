@@ -26,6 +26,8 @@
 #include <array_length.h>
 #include <pthreadP.h>
 #include <dl-call_tls_init_tp.h>
+#include <dl-rseq.h>
+#include <elf/dl-tunables.h>
 
 #ifdef SHARED
  #error makefile bug, this file is for static only
@@ -61,6 +63,18 @@ size_t _dl_tls_static_surplus;
 /* Remaining amount of static TLS that may be used for optimizing
    dynamic TLS access (e.g. with TLSDESC).  */
 size_t _dl_tls_static_optional;
+
+/* Size of the features present in the rseq area.  */
+size_t _dl_tls_rseq_feature_size;
+
+/* Alignment requirement of the rseq area.  */
+size_t _dl_tls_rseq_align;
+
+/* Size of the rseq area allocated in the static TLS block.  */
+size_t _dl_tls_rseq_alloc_size;
+
+/* Offset of the rseq area from the thread pointer.  */
+ptrdiff_t _dl_tls_rseq_offset;
 
 /* Generation counter for the dtv.  */
 size_t _dl_tls_generation;
@@ -110,6 +124,7 @@ __libc_setup_tls (void)
   size_t filesz = 0;
   void *initimage = NULL;
   size_t align = 0;
+  size_t tls_blocks_size = 0;
   size_t max_align = TCB_ALIGNMENT;
   size_t tcb_offset;
   const ElfW(Phdr) *phdr;
@@ -135,22 +150,79 @@ __libc_setup_tls (void)
   /* Calculate the size of the static TLS surplus, with 0 auditors.  */
   _dl_tls_static_surplus_init (0);
 
+  /* Even when disabled by tunable, an rseq area will be allocated to allow
+     application code to test the registration status with 'rseq->cpud_id >= 0'.
+     Default to the rseq ABI minimum size and alignment, this will ensure we
+     don't use more TLS than necessary.  */
+  size_t rseq_alloc_size = TLS_DL_RSEQ_MIN_SIZE;
+  size_t rseq_align = TLS_DL_RSEQ_MIN_ALIGN;
+  bool do_rseq = true;
+  do_rseq = TUNABLE_GET_FULL (glibc, pthread, rseq, int, NULL);
+  if (do_rseq)
+    {
+      rseq_align = GLRO(dl_tls_rseq_align);
+      /* Make sure the rseq area size is at least the minimum ABI size and a
+         multiple of the requested aligment. */
+      rseq_alloc_size = roundup (MAX (GLRO(dl_tls_rseq_feature_size),
+			      TLS_DL_RSEQ_MIN_SIZE), rseq_align);
+    }
+
+  /* Increase the maximum alignment with the rseq alignment requirements if
+     necessary.  */
+  max_align = MAX (max_align, rseq_align);
+
+  /* Record the rseq_area block size.  */
+  GLRO (dl_tls_rseq_alloc_size) = rseq_alloc_size;
+
   /* We have to set up the TCB block which also (possibly) contains
      'errno'.  Therefore we avoid 'malloc' which might touch 'errno'.
      Instead we use 'sbrk' which would only uses 'errno' if it fails.
      In this case we are right away out of memory and the user gets
      what she/he deserves.  */
 #if TLS_TCB_AT_TP
+  /* Before the the thread pointer, add the aligned tls block size and then
+     align the rseq area block on top.  */
+  tls_blocks_size = roundup (roundup (memsz, align ?: 1) + rseq_alloc_size, rseq_align);
+
+ /* Record the rseq_area offset.
+
+    With TLS_TCB_AT_TP the TLS blocks are allocated before the thread pointer
+    in reverse order.  Our block is added last which results in it being the
+    first in the static TLS block, thus record the most negative offset.
+
+    The alignment requirements of the pointer resulting from this offset and
+    the thread pointer are enforced by 'max_align' which is used to align the
+    tcb_offset.  */
+  GLRO (dl_tls_rseq_offset) = -tls_blocks_size;
+
   /* Align the TCB offset to the maximum alignment, as
      _dl_allocate_tls_storage (in elf/dl-tls.c) does using __libc_memalign
      and dl_tls_static_align.  */
-  tcb_offset = roundup (memsz + GLRO(dl_tls_static_surplus), max_align);
+  tcb_offset = roundup (tls_blocks_size + GLRO(dl_tls_static_surplus), max_align);
   tlsblock = _dl_early_allocate (tcb_offset + TLS_INIT_TCB_SIZE + max_align);
   if (tlsblock == NULL)
     _startup_fatal_tls_error ();
 #elif TLS_DTV_AT_TP
+  /* Align memsz on top of the initial tcb.  */
   tcb_offset = roundup (TLS_INIT_TCB_SIZE, align ?: 1);
-  tlsblock = _dl_early_allocate (tcb_offset + memsz + max_align
+
+  /* After the thread pointer, add the initial tcb plus the tls block size and
+     then align the rseq area block on top.  */
+  tls_blocks_size = roundup (tcb_offset + memsz + rseq_alloc_size, rseq_align);
+
+ /* Record the rseq_area offset.
+
+    With TLS_DTV_AT_TP the TLS blocks are allocated after the thread pointer in
+    order. Our block is added last which results in it being the last in the
+    static TLS block, thus record the offset as the size of the static TLS
+    block minus the size of our block. The resulting offset will be positive.
+
+    The alignment requirements of the pointer resulting from this offset and
+    the thread pointer are enforced by 'max_align' which is used to align the
+    tcb_offset.  */
+  GLRO (dl_tls_rseq_offset) = tls_blocks_size - rseq_alloc_size;
+
+  tlsblock = _dl_early_allocate (tls_blocks_size + max_align
 				 + TLS_PRE_TCB_SIZE
 				 + GLRO(dl_tls_static_surplus));
   if (tlsblock == NULL)
@@ -209,11 +281,5 @@ __libc_setup_tls (void)
   /* static_slotinfo.slotinfo[1].gen = 0; -- Already zero.  */
   static_slotinfo.slotinfo[1].map = main_map;
 
-  memsz = roundup (memsz, align ?: 1);
-
-#if TLS_DTV_AT_TP
-  memsz += tcb_offset;
-#endif
-
-  init_static_tls (memsz, MAX (TCB_ALIGNMENT, max_align));
+  init_static_tls (tls_blocks_size, MAX (TCB_ALIGNMENT, max_align));
 }
