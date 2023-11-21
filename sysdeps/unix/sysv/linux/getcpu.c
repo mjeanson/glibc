@@ -20,8 +20,8 @@
 #include <sysdep.h>
 #include <sysdep-vdso.h>
 
-int
-__getcpu (unsigned int *cpu, unsigned int *node)
+static int
+vsyscall_getcpu (unsigned int *cpu, unsigned int *node)
 {
 #ifdef HAVE_GETCPU_VSYSCALL
   return INLINE_VSYSCALL (getcpu, 3, cpu, node, NULL);
@@ -29,5 +29,28 @@ __getcpu (unsigned int *cpu, unsigned int *node)
   return INLINE_SYSCALL_CALL (getcpu, cpu, node, NULL);
 #endif
 }
+
+#ifdef RSEQ_SIG
+int
+__getcpu (unsigned int *cpu, unsigned int *node)
+{
+  /* Check if rseq is registered.  */
+  if __glibc_likely (RSEQ_GETMEM_VOLATILE (rseq_get_area(THREAD_SELF), cpu_id) >= 0)
+  {
+    // FIXME: Check feature size
+    if (rseq_load32_load32_relaxed(rseq_get_area(THREAD_SELF)->cpu_id, rseq_get_area(THREAD_SELF)->node_id, cpu, node) == 0) {
+      return 0;
+    }
+  }
+
+  return vsyscall_getcpu (cpu, node);
+}
+#else /* RSEQ_SIG */
+int
+__getcpu (unsigned int *cpu, unsigned int *node)
+{
+  return vsyscall_getcpu (cpu, node);
+}
+#endif /* RSEQ_SIG */
 weak_alias (__getcpu, getcpu)
 libc_hidden_def (__getcpu)
