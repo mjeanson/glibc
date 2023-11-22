@@ -24,6 +24,23 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <sys/rseq.h>
+#include <ldsodefs.h>
+
+/* rseq area registered with the kernel.  Use a custom definition
+   here to isolate from kernel struct rseq changes.  The
+   implementation of sched_getcpu needs acccess to the cpu_id field;
+   the other fields are unused and not included here.  */
+struct rseq_area
+{
+  uint32_t cpu_id_start;
+  uint32_t cpu_id;
+};
+
+static inline struct rseq_area *
+rseq_get_area(struct pthread *self)
+{
+  return (struct rseq_area *) ((char *) self + GLRO (dl_tls_rseq_offset));
+}
 
 #ifdef RSEQ_SIG
 static inline bool
@@ -31,20 +48,20 @@ rseq_register_current_thread (struct pthread *self, bool do_rseq)
 {
   if (do_rseq)
     {
-      int ret = INTERNAL_SYSCALL_CALL (rseq, &self->rseq_area,
-                                       sizeof (self->rseq_area),
+      int ret = INTERNAL_SYSCALL_CALL (rseq, rseq_get_area(self),
+                                       GLRO (dl_tls_rseq_size),
                                        0, RSEQ_SIG);
       if (!INTERNAL_SYSCALL_ERROR_P (ret))
         return true;
     }
-  THREAD_SETMEM (self, rseq_area.cpu_id, RSEQ_CPU_ID_REGISTRATION_FAILED);
+  RSEQ_SETMEM (rseq_get_area(self), cpu_id, RSEQ_CPU_ID_REGISTRATION_FAILED);
   return false;
 }
 #else /* RSEQ_SIG */
 static inline bool
 rseq_register_current_thread (struct pthread *self, bool do_rseq)
 {
-  THREAD_SETMEM (self, rseq_area.cpu_id, RSEQ_CPU_ID_REGISTRATION_FAILED);
+  RSEQ_SETMEM (rseq_get_area(self), cpu_id, RSEQ_CPU_ID_REGISTRATION_FAILED);
   return false;
 }
 #endif /* RSEQ_SIG */
