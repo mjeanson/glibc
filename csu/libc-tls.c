@@ -62,6 +62,12 @@ size_t _dl_tls_static_surplus;
    dynamic TLS access (e.g. with TLSDESC).  */
 size_t _dl_tls_static_optional;
 
+/* Offset of the rseq area from the thread pointer.  */
+ptrdiff_t _dl_tls_rseq_offset;
+
+/* Size of the rseq area in the static TLS block.  */
+size_t _dl_tls_rseq_size;
+
 /* Generation counter for the dtv.  */
 size_t _dl_tls_generation;
 
