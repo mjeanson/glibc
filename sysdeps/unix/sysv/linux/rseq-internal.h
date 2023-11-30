@@ -386,10 +386,17 @@ struct rseq_area
   uint32_t node_id;
 };
 
+#pragma GCC push_options
+#pragma GCC optimize("O0")
+
 static inline struct rseq_area *
 rseq_get_area(void)
 {
-  return (struct rseq_area *) ((char *) __thread_pointer() + GLRO (dl_tls_rseq_offset));
+  char *tp = (char *) __thread_pointer();
+  struct rseq_area *rseq = (struct rseq_area *) (tp + GLRO (dl_tls_rseq_offset));
+  goto end;
+end:
+  return rseq;
 }
 
 #ifdef RSEQ_SIG
@@ -418,5 +425,7 @@ rseq_register_current_thread (struct pthread *self, bool do_rseq)
   return false;
 }
 #endif /* RSEQ_SIG */
+
+#pragma GCC pop_options
 
 #endif /* rseq-internal.h */

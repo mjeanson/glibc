@@ -332,6 +332,9 @@ static int create_thread (struct pthread *pd, const struct pthread_attr *attr,
   return 0;
 }
 
+#pragma GCC push_options
+#pragma GCC optimize("O0")
+
 /* Local function to start thread and handle cleanup.  */
 static int _Noreturn
 start_thread (void *arg)
@@ -601,6 +604,7 @@ out:
   /* NOTREACHED */
 }
 
+#pragma GCC pop_options
 
 /* Return true iff obliged to report TD_CREATE events.  */
 static bool
