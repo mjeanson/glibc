@@ -19,9 +19,10 @@
 #include <sched.h>
 #include <sysdep.h>
 #include <sysdep-vdso.h>
+#include <rseq-internal.h>
 
-int
-__getcpu (unsigned int *cpu, unsigned int *node)
+static int
+vsyscall_getcpu (unsigned int *cpu, unsigned int *node)
 {
 #ifdef HAVE_GETCPU_VSYSCALL
   return INLINE_VSYSCALL (getcpu, 3, cpu, node, NULL);
@@ -29,5 +30,34 @@ __getcpu (unsigned int *cpu, unsigned int *node)
   return INLINE_SYSCALL_CALL (getcpu, cpu, node, NULL);
 #endif
 }
+
+#ifdef RSEQ_SIG
+int
+__getcpu (unsigned int *cpu, unsigned int *node)
+{
+# ifdef RSEQ_HAS_LOAD32_LOAD32_RELAXED
+  /* Check if rseq is registered.  */
+  if (__glibc_likely (rseq_is_registered() && rseq_node_id_available()))
+  {
+    struct rseq_area *rseq_area = rseq_get_area();
+
+    if (rseq_load32_load32_relaxed(cpu, &rseq_area->cpu_id,
+      		      node, &rseq_area->node_id) == 0)
+    {
+      /* The critical section was not aborted, return 0.  */
+      return 0;
+    }
+  }
+# endif
+
+  return vsyscall_getcpu (cpu, node);
+}
+#else /* RSEQ_SIG */
+int
+__getcpu (unsigned int *cpu, unsigned int *node)
+{
+  return vsyscall_getcpu (cpu, node);
+}
+#endif /* RSEQ_SIG */
 weak_alias (__getcpu, getcpu)
 libc_hidden_def (__getcpu)
