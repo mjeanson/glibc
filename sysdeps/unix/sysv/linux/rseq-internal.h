@@ -28,13 +28,17 @@
 #include <ldsodefs.h>
 
 /* rseq area registered with the kernel.  Use a custom definition
-   here to isolate from kernel struct rseq changes.  The
-   implementation of sched_getcpu needs acccess to the cpu_id field;
-   the other fields are unused and not included here.  */
+   here to isolate from kernel struct rseq changes.  Access to fields
+   beyond the 20 bytes of the original ABI (after 'flags') must be gated
+   by a check of the feature size.  */
 struct rseq_area
 {
   uint32_t cpu_id_start;
   uint32_t cpu_id;
+  uint64_t rseq_cs;
+  uint32_t flags;
+  uint32_t node_id;
+  uint32_t mm_cid;
 };
 
 static inline struct rseq_area *
