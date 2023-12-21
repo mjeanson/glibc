@@ -41,10 +41,66 @@ struct rseq_area
   uint32_t mm_cid;
 };
 
+/*
+ * gcc prior to 4.8.2 miscompiles asm goto.
+ * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58670
+ *
+ * gcc prior to 8.1.0 miscompiles asm goto at O1.
+ * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=103908
+ *
+ * clang prior to version 13.0.1 miscompiles asm goto at O2.
+ * https://github.com/llvm/llvm-project/issues/52735
+ *
+ * Work around these issues by adding a volatile inline asm with
+ * memory clobber in the fallthrough after the asm goto and at each
+ * label target.  Emit this for all compilers in case other similar
+ * issues are found in the future.
+ */
+#define rseq_after_asm_goto()	__asm__ __volatile__ ("" : : : "memory")
+
+#define __rseq_str_1(x)	#x
+#define __rseq_str(x)		__rseq_str_1(x)
+
+/* Offset of rseq_cs field in struct rseq. */
+#define RSEQ_CS_OFFSET		8
+
+#define rseq_sizeof_field(TYPE, MEMBER) sizeof((((TYPE *)0)->MEMBER))
+#define rseq_offsetofend(TYPE, MEMBER) \
+        (offsetof(TYPE, MEMBER) + rseq_sizeof_field(TYPE, MEMBER))
+
+/* Returns a pointer to the current thread rseq area.  */
 static inline struct rseq_area *
 rseq_get_area(void)
 {
   return (struct rseq_area *) ((char *) __thread_pointer() + GLRO (dl_tls_rseq_offset));
+}
+
+/* Returns the int value of 'rseq_area->cpu_id'.  */
+static inline int
+rseq_get_cpu_id(void)
+{
+  return (int) RSEQ_GETMEM_VOLATILE (rseq_get_area(), cpu_id);
+}
+
+/* Returns true if the rseq registration is active.  */
+static inline bool
+rseq_is_registered(void)
+{
+  return rseq_get_cpu_id() >= 0;
+}
+
+/* Returns true if the current rseq registration has the 'node_id' field.  */
+static inline bool
+rseq_node_id_available(void)
+{
+  return GLRO (dl_tls_rseq_feature_size) >= rseq_offsetofend(struct rseq_area, node_id);
+}
+
+/* Returns true if the current rseq registration has the 'node_id' field.  */
+static inline bool
+rseq_mm_cid_available(void)
+{
+  return GLRO (dl_tls_rseq_feature_size) >= rseq_offsetofend(struct rseq_area, mm_cid);
 }
 
 #ifdef RSEQ_SIG
