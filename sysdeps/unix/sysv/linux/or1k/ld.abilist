@@ -6,3 +6,4 @@ GLIBC_2.35 __stack_chk_guard D 0x4
 GLIBC_2.35 __tls_get_addr F
 GLIBC_2.35 _dl_mcount F
 GLIBC_2.35 _r_debug D 0x14
+GLIBC_2.40 __rseq_feature_size D 0x4

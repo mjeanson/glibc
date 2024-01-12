@@ -39,6 +39,7 @@ check_rseq_disabled (void)
 
   TEST_COMPARE (__rseq_flags, 0);
   TEST_COMPARE (__rseq_size, 0);
+  TEST_COMPARE (__rseq_feature_size, 0);
   TEST_COMPARE ((int) rseq_area->cpu_id, RSEQ_CPU_ID_REGISTRATION_FAILED);
 
   int ret = syscall (__NR_rseq, &local_rseq, RSEQ_TEST_MIN_SIZE, 0, RSEQ_SIG);

@@ -38,6 +38,23 @@ __rseq_size:
 _rseq_size:
 	.zero	RSEQ_SIZE_SIZE
 
+/* Define 2 symbols, __rseq_feature_size is public const and
+   _rseq_feature_size, which is an alias of __rseq_feature_size, but hidden and
+   writable for internal use.  */
+
+	.globl	__rseq_feature_size
+	.type	__rseq_feature_size, %object
+	.size	__rseq_feature_size, RSEQ_FEATURE_SIZE_SIZE
+	.hidden _rseq_feature_size
+	.globl	_rseq_feature_size
+	.type	_rseq_feature_size, %object
+	.size	_rseq_feature_size, RSEQ_FEATURE_SIZE_SIZE
+	.section .data.rel.ro
+	.balign	RSEQ_FEATURE_SIZE_ALIGN
+__rseq_feature_size:
+_rseq_feature_size:
+	.zero	RSEQ_FEATURE_SIZE_SIZE
+
 /* Define 2 symbols, __rseq_offset is public const and _rseq_offset, which is an
    alias of __rseq_offset, but hidden and writable for internal use.  */
 

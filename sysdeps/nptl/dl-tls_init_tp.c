@@ -48,6 +48,7 @@ const unsigned int __rseq_flags;
 
 /* The variables are in .data.relro but are not yet write-protected.  */
 extern unsigned int _rseq_size;
+extern unsigned int _rseq_feature_size;
 extern ptrdiff_t _rseq_offset;
 
 void
@@ -108,6 +109,7 @@ __tls_init_tp (void)
     if (rseq_register_current_thread (pd, do_rseq))
       {
         _rseq_size = GLRO (dl_tls_rseq_alloc_size);
+        _rseq_feature_size = GLRO (dl_tls_rseq_feature_size);
       }
 
     /* If the registration fails or is disabled by tunable, the public rseq

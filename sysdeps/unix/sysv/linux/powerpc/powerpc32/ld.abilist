@@ -9,3 +9,4 @@ GLIBC_2.35 __rseq_flags D 0x4
 GLIBC_2.35 __rseq_offset D 0x4
 GLIBC_2.35 __rseq_size D 0x4
 GLIBC_2.39 __parse_hwcap_3_4_and_convert_at_platform F
+GLIBC_2.40 __rseq_feature_size D 0x4

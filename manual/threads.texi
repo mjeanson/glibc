@@ -1011,6 +1011,15 @@ registration is successful, @code{__rseq_size} is at least 32 (the
 initial size of @code{struct rseq}).
 @end deftypevar
 
+@deftypevar {unsigned int} __rseq_feature_size
+@standards{Linux, sys/rseq.h}
+This variable is either zero (if restartable sequence registration
+failed or has been disabled) or the size of the restartable sequence
+features supported by the running kernel.  If registration is
+successful, @code{__rseq_feature_size} is at least 20 (the feature size
+of @code{struct rseq} in the initial rseq kernel implementation).
+@end deftypevar
+
 @deftypevar {unsigned int} __rseq_flags
 @standards{Linux, sys/rseq.h}
 The flags used during restartable sequence registration with the kernel.

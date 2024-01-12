@@ -4,5 +4,8 @@
 RSEQ_SIZE_SIZE		sizeof (unsigned int)
 RSEQ_SIZE_ALIGN		__alignof (unsigned int)
 
+RSEQ_FEATURE_SIZE_SIZE		sizeof (unsigned int)
+RSEQ_FEATURE_SIZE_ALIGN		__alignof (unsigned int)
+
 RSEQ_OFFSET_SIZE	sizeof (ptrdiff_t)
 RSEQ_OFFSET_ALIGN	__alignof (ptrdiff_t)

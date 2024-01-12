@@ -163,6 +163,10 @@ extern const ptrdiff_t __rseq_offset;
    unsuccessful.  */
 extern const unsigned int __rseq_size;
 
+/* Size of the registered rseq features.  0 if the registration was
+   unsuccessful.  */
+extern const unsigned int __rseq_feature_size;
+
 /* Flags used during rseq registration.  */
 extern const unsigned int __rseq_flags;
 

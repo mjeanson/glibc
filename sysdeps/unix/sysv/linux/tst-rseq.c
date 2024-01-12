@@ -38,12 +38,14 @@ static void
 do_rseq_main_test (void)
 {
   size_t rseq_align = MAX (getauxval (AT_RSEQ_ALIGN), RSEQ_TEST_MIN_ALIGN);
-  size_t rseq_size = roundup (MAX (getauxval (AT_RSEQ_FEATURE_SIZE), RSEQ_TEST_MIN_SIZE), rseq_align);
+  size_t rseq_feature_size = MAX (getauxval (AT_RSEQ_FEATURE_SIZE), RSEQ_TEST_MIN_FEATURE_SIZE);
+  size_t rseq_size = roundup (MAX (rseq_feature_size, RSEQ_TEST_MIN_SIZE), rseq_align);
   struct rseq *rseq = __thread_pointer () + __rseq_offset;
 
   TEST_VERIFY_EXIT (rseq_thread_registered ());
   TEST_COMPARE (__rseq_flags, 0);
   TEST_COMPARE (__rseq_size, rseq_size);
+  TEST_COMPARE (__rseq_feature_size, rseq_feature_size);
   /* The size of the rseq area must be a multiple of the alignment.  */
   TEST_VERIFY ((__rseq_size % rseq_align) == 0);
   /* The rseq area address must be aligned.  */
