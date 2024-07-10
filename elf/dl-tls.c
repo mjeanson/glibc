@@ -36,6 +36,8 @@
 #define TUNABLE_NAMESPACE rtld
 #include <dl-tunables.h>
 
+#include <dl-extra_tls.h>
+
 /* Surplus static TLS, GLRO(dl_tls_static_surplus), is used for
 
    - IE TLS in libc.so for all dlmopen namespaces except in the initial
@@ -323,6 +325,33 @@ _dl_determine_tlsoffset (void)
       slotinfo[cnt].map->l_tls_offset = off;
     }
 
+  /* Insert the extra TLS block after the last TLS block.  */
+
+  /* Extra TLS block for internal usage to append at the end of the TLS blocks
+     (in allocation order). On Linux systems this is where the rseq area will
+     be allocated. On other systems it is currently unused and both values will
+     be '0'.  */
+  size_t extra_tls_size = _dl_extra_tls_get_size();
+  size_t extra_tls_align = _dl_extra_tls_get_align();
+
+  /* Align and add the extra TLS block to the global offset.  */
+  offset = roundup (offset, extra_tls_align) + extra_tls_size;
+
+  /* Increase the maximum alignment with the extra TLS alignment requirements
+     if necessary.  */
+  max_align = MAX (max_align, extra_tls_align);
+
+ /* Record the extra TLS offset.
+
+    With TLS_TCB_AT_TP the TLS blocks are allocated before the thread pointer
+    in reverse order.  Our block is added last which results in it being the
+    first in the static TLS block, thus record the most negative offset.
+
+    The alignment requirements of the pointer resulting from this offset and
+    the thread pointer are enforced by 'max_align' which is used to align the
+    tcb_offset.  */
+  _dl_extra_tls_set_offset(-offset);
+
   GL(dl_tls_static_used) = offset;
   GLRO (dl_tls_static_size) = (roundup (offset + GLRO(dl_tls_static_surplus),
 					max_align)
@@ -367,6 +396,36 @@ _dl_determine_tlsoffset (void)
 
       offset = off + slotinfo[cnt].map->l_tls_blocksize - firstbyte;
     }
+
+  /* Insert the extra TLS block after the last TLS block.  */
+
+  /* Extra TLS block for internal usage to append at the end of the TLS blocks
+     (in allocation order). On Linux systems this is where the rseq area will
+     be allocated. On other systems it is currently unused and both values will
+     be '0'.  */
+  size_t extra_tls_size = _dl_extra_tls_get_size();
+  size_t extra_tls_align = _dl_extra_tls_get_align();
+
+  /* Align the global offset to the beginning of the extra TLS block.  */
+  offset = roundup (offset, extra_tls_align);
+
+ /* Record the extra TLS offset.
+
+    With TLS_DTV_AT_TP the TLS blocks are allocated after the thread pointer in
+    order. Our block is added last which results in it being the last in the
+    static TLS block, thus record the offset as the size of the static TLS
+    block minus the size of our block. The resulting offset will be positive.
+
+    The alignment requirements of the pointer resulting from this offset and
+    the thread pointer are enforced by 'max_align' which is used to align the
+    tcb_offset.  */
+  _dl_extra_tls_set_offset(offset);
+
+  /* Add the extra TLS block to the global offset.  */
+  offset += extra_tls_size;
+
+  /* Increase the max_align if necessary.  */
+  max_align = MAX (max_align, extra_tls_align);
 
   GL(dl_tls_static_used) = offset;
   GLRO (dl_tls_static_size) = roundup (offset + GLRO(dl_tls_static_surplus),
