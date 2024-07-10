@@ -46,6 +46,8 @@ rtld_mutex_dummy (pthread_mutex_t *lock)
 
 const unsigned int __rseq_flags;
 
+size_t _rseq_align attribute_hidden;
+
 void
 __tls_pre_init_tp (void)
 {
