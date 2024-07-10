@@ -23,11 +23,16 @@
 #include <syscall.h>
 #include <sys/rseq.h>
 #include <tls.h>
+#include <rseq-internal.h>
+
+#define RSEQ_TEST_MIN_SIZE 32
+#define RSEQ_TEST_MIN_FEATURE_SIZE 20
+#define RSEQ_TEST_MIN_ALIGN 32
 
 static inline bool
 rseq_thread_registered (void)
 {
-  return THREAD_GETMEM_VOLATILE (THREAD_SELF, rseq_area.cpu_id) >= 0;
+  return RSEQ_GETMEM_VOLATILE (rseq_get_area(), cpu_id) >= 0;
 }
 
 static inline int
