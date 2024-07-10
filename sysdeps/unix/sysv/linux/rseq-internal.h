@@ -24,6 +24,26 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <sys/rseq.h>
+#include <thread_pointer.h>
+#include <ldsodefs.h>
+
+/* rseq area registered with the kernel.  Use a custom definition here to
+   isolate from the system provided header which could lack some fields of the
+   Extended ABI.
+
+   Access to fields of the Extended ABI beyond the 20 bytes of the original ABI
+   (after 'flags') must be gated by a check of the feature size.  */
+struct rseq_area
+{
+  /* Original ABI.  */
+  uint32_t cpu_id_start;
+  uint32_t cpu_id;
+  uint64_t rseq_cs;
+  uint32_t flags;
+  /* Extended ABI.  */
+  uint32_t node_id;
+  uint32_t mm_cid;
+};
 
 /* Minimum size of the rseq area allocation required by the syscall.  The
    actually used rseq feature size may be less (20 bytes initially).  */
@@ -41,9 +61,26 @@ extern size_t _rseq_align attribute_hidden;
 
 /* Size of the active features in the rseq area.
    Populated from the auxiliary vector with a minimum of '20'.
+   Set to '0' on registration failure of the main thread.
    In .data.relro but not yet write-protected.  */
 extern unsigned int _rseq_size attribute_hidden;
+
+/* Offset from the thread pointer to the rseq area, always set to allow
+   checking the registration status by reading the 'cpu_id' field.
+   In .data.relro but not yet write-protected.  */
 extern ptrdiff_t _rseq_offset attribute_hidden;
+
+/* Returns a pointer to the current thread rseq area.  */
+static inline struct rseq_area *
+rseq_get_area(void)
+{
+#if IS_IN (rtld)
+  /* Use the hidden symbol in ld.so.  */
+  return (struct rseq_area *) ((char *) __thread_pointer() + _rseq_offset);
+#else
+  return (struct rseq_area *) ((char *) __thread_pointer() + __rseq_offset);
+#endif
+}
 
 #ifdef RSEQ_SIG
 static inline bool
@@ -52,29 +89,44 @@ rseq_register_current_thread (struct pthread *self, bool do_rseq)
   if (do_rseq)
     {
       unsigned int size;
+
+      /* Get the feature size from the auxiliary vector, this will always be at
+         least 20 bytes.  */
 #if IS_IN (rtld)
       /* Use the hidden symbol in ld.so.  */
       size = _rseq_size;
 #else
       size = __rseq_size;
 #endif
+
+      /* The feature size can be smaller than the minimum rseq area size of 32
+	 bytes accepted by the syscall, if this is the case, bump the size of
+	 the registration to the minimum. The 'extra TLS' block is always at
+	 least 32 bytes. */
       if (size < RSEQ_AREA_SIZE_INITIAL)
-        /* The initial implementation used only 20 bytes out of 32,
-           but still expected size 32.  */
         size = RSEQ_AREA_SIZE_INITIAL;
-      int ret = INTERNAL_SYSCALL_CALL (rseq, &self->rseq_area,
-                                       size, 0, RSEQ_SIG);
+
+      /* The kernel expects 'rseq_area->rseq_cs == NULL' on registration, zero
+         the whole rseq area.  */
+      memset(rseq_get_area(), 0, size);
+
+      int ret = INTERNAL_SYSCALL_CALL (rseq, rseq_get_area(), size, 0,
+		      RSEQ_SIG);
       if (!INTERNAL_SYSCALL_ERROR_P (ret))
         return true;
     }
-  THREAD_SETMEM (self, rseq_area.cpu_id, RSEQ_CPU_ID_REGISTRATION_FAILED);
+
+  /* If the registration failed or is disabled by tunable, we have to set 'cpu_id' to
+     RSEQ_CPU_ID_REGISTRATION_FAILED to allow userspace to properly test the
+     status of the registration.  */
+  RSEQ_SETMEM (rseq_get_area(), cpu_id, RSEQ_CPU_ID_REGISTRATION_FAILED);
   return false;
 }
 #else /* RSEQ_SIG */
 static inline bool
 rseq_register_current_thread (struct pthread *self, bool do_rseq)
 {
-  THREAD_SETMEM (self, rseq_area.cpu_id, RSEQ_CPU_ID_REGISTRATION_FAILED);
+  RSEQ_SETMEM (rseq_get_area(), cpu_id, RSEQ_CPU_ID_REGISTRATION_FAILED);
   return false;
 }
 #endif /* RSEQ_SIG */

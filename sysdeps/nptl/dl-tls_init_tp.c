@@ -101,19 +101,17 @@ __tls_init_tp (void)
   }
 
   {
+    /* If the registration fails or is disabled by tunable, the public
+       '__rseq_size' will be set '0' regardless of the feature size of the
+       allocated rseq area.  An rseq area of at least 32 bytes is always
+       allocated since application code is allowed to test the status of the
+       rseq registration with 'rseq->cpu_id >= 0'.  */
     bool do_rseq = true;
     do_rseq = TUNABLE_GET (rseq, int, NULL);
-    if (rseq_register_current_thread (pd, do_rseq))
-      _rseq_size = RSEQ_AREA_SIZE_INITIAL_USED;
-
-#ifdef RSEQ_SIG
-    /* This should be a compile-time constant, but the current
-       infrastructure makes it difficult to determine its value.  Not
-       all targets support __thread_pointer, so set __rseq_offset only
-       if the rseq registration may have happened because RSEQ_SIG is
-       defined.  */
-    _rseq_offset = (char *) &pd->rseq_area - (char *) __thread_pointer ();
-#endif
+    if (!rseq_register_current_thread (pd, do_rseq))
+      {
+        _rseq_size = 0;
+      }
   }
 
   /* Set initial thread's stack block from 0 up to __libc_stack_end.
