@@ -610,6 +610,14 @@ struct rtld_global_ro
      See comments in elf/dl-tls.c where it is initialized.  */
   EXTERN size_t _dl_tls_static_surplus;
 
+  /* Size of the supported rseq features.
+     Populated from the auxiliary vector with a minimum of '20'.  */
+  EXTERN size_t _dl_rseq_feature_size;
+
+  /* Alignment requirement of the rseq area.
+     Populated from the auxiliary vector with a minimum of '32'.  */
+  EXTERN size_t _dl_rseq_align;
+
   /* Name of the shared object to be profiled (if any).  */
   EXTERN const char *_dl_profile;
   /* Filename of the output file.  */

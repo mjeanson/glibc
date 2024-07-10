@@ -131,6 +131,14 @@ int _dl_starting_up = 1;
 /* Random data provided by the kernel.  */
 void *_dl_random;
 
+/* Size of the supported rseq features.
+   Populated from the auxiliary vector with a minimum of '20'.  */
+size_t _dl_rseq_feature_size;
+
+/* Alignment requirement of the rseq area.
+   Populated from the auxiliary vector with a minimum of '32'.  */
+size_t _dl_rseq_align;
+
 /* Get architecture specific initializer.  */
 #include <dl-procruntime.c>
 #include <dl-procinfo.c>

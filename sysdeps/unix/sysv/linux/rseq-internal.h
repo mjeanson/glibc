@@ -30,6 +30,12 @@
 #define RSEQ_AREA_SIZE_INITIAL 32
 #define RSEQ_AREA_SIZE_INITIAL_USED 20
 
+/* Minimum feature size of the rseq area.  */
+#define RSEQ_MIN_FEATURE_SIZE 20
+
+/* Minimum alignment of the rseq area.  */
+#define RSEQ_MIN_ALIGN 32
+
 /* The variables are in .data.relro but are not yet write-protected.  */
 extern unsigned int _rseq_size attribute_hidden;
 extern ptrdiff_t _rseq_offset attribute_hidden;

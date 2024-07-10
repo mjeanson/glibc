@@ -209,6 +209,8 @@ _dl_show_auxv (void)
 	  [AT_L2_CACHEGEOMETRY - 2] =	{ "L2_CACHEGEOMETRY:  0x", hex },
 	  [AT_L3_CACHESIZE - 2] =	{ "L3_CACHESIZE:      ", dec },
 	  [AT_L3_CACHEGEOMETRY - 2] =	{ "L3_CACHEGEOMETRY:  0x", hex },
+	  [AT_RSEQ_FEATURE_SIZE - 2] =	{ "RSEQ_FEATURE_SIZE: ", dec },
+	  [AT_RSEQ_ALIGN - 2] =		{ "RSEQ_ALIGN:        ", dec },
 	};
       unsigned int idx = (unsigned int) (av->a_type - 2);
 

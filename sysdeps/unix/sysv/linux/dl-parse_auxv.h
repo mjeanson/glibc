@@ -21,6 +21,7 @@
 #include <fpu_control.h>
 #include <ldsodefs.h>
 #include <link.h>
+#include <rseq-internal.h>
 
 typedef ElfW(Addr) dl_parse_auxv_t[AT_MINSIGSTKSZ + 1];
 
@@ -58,6 +59,10 @@ void _dl_parse_auxv (ElfW(auxv_t) *av, dl_parse_auxv_t auxv_values)
   if (GLRO(dl_sysinfo_dso) != NULL)
     GLRO(dl_sysinfo) = auxv_values[AT_SYSINFO];
 #endif
+
+  GLRO (dl_rseq_feature_size) = MAX (auxv_values[AT_RSEQ_FEATURE_SIZE],
+		  RSEQ_MIN_FEATURE_SIZE);
+  GLRO (dl_rseq_align) = MAX (auxv_values[AT_RSEQ_ALIGN], RSEQ_MIN_ALIGN);
 
   DL_PLATFORM_AUXV
 }
