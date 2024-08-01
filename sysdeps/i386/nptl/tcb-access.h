@@ -123,3 +123,64 @@
 			 "i" (offsetof (struct pthread, member)),	      \
 			 "r" (idx));					      \
        }})
+
+
+#if IS_IN (rtld)
+/* Use the hidden symbol in ld.so.  */
+# define rseq_offset_sym _rseq_offset
+#else
+# define rseq_offset_sym __rseq_offset
+#endif
+
+/* Read member of the RSEQ area directly.  */
+#define RSEQ_GETMEM_VOLATILE(descr, member) \
+  ({ __typeof (descr->member) __value;					      \
+     _Static_assert (sizeof (__value) == 1				      \
+		     || sizeof (__value) == 4				      \
+		     || sizeof (__value) == 8,				      \
+		     "size of per-thread data");			      \
+     if (sizeof (__value) == 1)						      \
+       asm volatile ("movb %%gs:%P2(%3),%b0"				      \
+		     : "=q" (__value)					      \
+		     : "0" (0), "i" (offsetof (struct rseq_area, member)),   \
+		     "r" (rseq_offset_sym));					      \
+     else if (sizeof (__value) == 4)					      \
+       asm volatile ("movl %%gs:%P1(%2),%0"				      \
+		     : "=r" (__value)					      \
+		     : "i" (offsetof (struct rseq_area, member)),	      \
+		       "r" (rseq_offset_sym));					      \
+     else /* 8 */							      \
+       {								      \
+	 asm volatile  ("movl %%gs:%P1(%2),%%eax\n\t"			      \
+			"movl %%gs:4+%P1(%2),%%edx"			      \
+			: "=&A" (__value)				      \
+			: "i" (offsetof (struct rseq_area, member)),	      \
+			  "r" (rseq_offset_sym));				      \
+       }								      \
+     __value; })
+
+/* Set member of the RSEQ area directly.  */
+#define RSEQ_SETMEM(descr, member, value) \
+  ({									      \
+     _Static_assert (sizeof (descr->member) == 1			      \
+		     || sizeof (descr->member) == 4			      \
+		     || sizeof (descr->member) == 8,			      \
+		     "size of per-thread data");			      \
+     if (sizeof (descr->member) == 1)					      \
+       asm volatile ("movb %b0,%%gs:%P1(%2)" :				      \
+		     : "iq" (value),					      \
+		       "i" (offsetof (struct rseq_area, member)),	      \
+		       "r" (rseq_offset_sym));					      \
+     else if (sizeof (descr->member) == 4)				      \
+       asm volatile ("movl %0,%%gs:%P1(%2)" :				      \
+		     : "ir" (value),					      \
+		       "i" (offsetof (struct rseq_area, member)),	      \
+		       "r" (rseq_offset_sym));					      \
+     else /* 8 */							      \
+       {								      \
+	 asm volatile ("movl %%eax,%%gs:%P1(%2)\n\t"			      \
+		       "movl %%edx,%%gs:4+%P1(%2)" :			      \
+		       : "A" ((uint64_t) cast_to_integer (value)),	      \
+			 "i" (offsetof (struct rseq_area, member)),	      \
+			 "r" (rseq_offset_sym));				      \
+       }})
