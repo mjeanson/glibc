@@ -30,6 +30,9 @@
 #define RSEQ_AREA_SIZE_INITIAL 32
 #define RSEQ_AREA_SIZE_INITIAL_USED 20
 
+/* Minimum size of the rseq area.  */
+#define RSEQ_AREA_MIN_SIZE 32
+
 /* Minimum feature size of the rseq area.  */
 #define RSEQ_MIN_FEATURE_SIZE 20
 
